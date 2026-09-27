@@ -39,7 +39,7 @@ Windows 语音输入工具，基于豆包 ASR 实现实时语音识别。
 
 3. **系统托盘**（菜单为英文）:
    - **左键点击托盘图标** = 暂停/恢复整个服务——暂停后热键和悬浮按钮都失效，悬浮按钮隐藏，托盘图标变灰
-   - **右键点击** 打开菜单：`Start Voice Input` / `Stop Voice Input` / `Service: Pause`(或 `Service: Resume`) / `Settings...` / `Exit`
+   - **右键点击** 打开菜单：`Start Voice Input` / `Stop Voice Input` / `Service: Pause`(或 `Service: Resume`) / `Help`(当前热键配置说明，按 config.toml 实际内容生成) / `Exit`
 
 4. **热键暂停/恢复服务**（`double_tap`/`single_tap` 模式下生效）:
    - **按住触发键的同时按下 `pause_combo_key`**（默认 `Space`，即按住 RAlt 同时按空格）= 暂停/恢复整个服务，效果和左键点托盘图标一样：悬浮按钮隐藏=已暂停，重新出现=已恢复

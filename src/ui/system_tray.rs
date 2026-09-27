@@ -12,7 +12,7 @@ use tray_icon::{
 };
 
 use crate::business::{HotkeyManager, VoiceController};
-use crate::data::AppConfig;
+use crate::data::{AppConfig, HotkeyConfig};
 use crate::ui::{
     ButtonState, FloatingButton, FloatingButtonConfig, FloatingButtonEvent,
     FloatingButtonStateSetter,
@@ -65,14 +65,14 @@ pub async fn run_app(
     let separator1 = PredefinedMenuItem::separator();
     let service_item = MenuItem::new("Service: Pause", true, None);
     let separator2 = PredefinedMenuItem::separator();
-    let settings_item = MenuItem::new("Settings...", true, None);
+    let help_item = MenuItem::new("Help", true, None);
     let separator3 = PredefinedMenuItem::separator();
     let quit_item = MenuItem::new("Exit", true, None);
 
     let start_id = start_item.id().clone();
     let stop_id = stop_item.id().clone();
     let service_id = service_item.id().clone();
-    let settings_id = settings_item.id().clone();
+    let help_id = help_item.id().clone();
     let quit_id = quit_item.id().clone();
 
     menu.append(&start_item)?;
@@ -80,7 +80,7 @@ pub async fn run_app(
     menu.append(&separator1)?;
     menu.append(&service_item)?;
     menu.append(&separator2)?;
-    menu.append(&settings_item)?;
+    menu.append(&help_item)?;
     menu.append(&separator3)?;
     menu.append(&quit_item)?;
 
@@ -168,6 +168,11 @@ pub async fn run_app(
     // Keep the manager (and its internal hook thread) alive for the app's lifetime.
     let _hotkey_manager = hotkey_manager;
 
+    // Built once from the actual loaded config, so the Help dialog always
+    // describes what's really configured instead of hardcoded example keys
+    // that can drift out of sync with config.toml.
+    let help_text = build_help_text(&config.hotkey);
+
     // Spawn event handler thread for menu, tray icon, and floating button events
     let running_clone = running.clone();
     let vc_clone = voice_controller.clone();
@@ -239,19 +244,15 @@ pub async fn run_app(
                     });
                 } else if event.id == service_id {
                     request_pause_toggle();
-                } else if event.id == settings_id {
-                    tracing::info!("Settings from menu");
+                } else if event.id == help_id {
+                    tracing::info!("Help from menu");
                     #[cfg(target_os = "windows")]
                     {
-                        use windows::core::w;
+                        use windows::core::{w, HSTRING};
                         use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_OK, MB_ICONINFORMATION};
+                        let text = HSTRING::from(help_text.as_str());
                         unsafe {
-                            MessageBoxW(
-                                None,
-                                w!("Doubao Voice Input Settings\n\nHotkey: see config.toml [hotkey]\nFloating button: click to toggle recording\nTray icon: left-click to pause/resume the service\n\nConfig file: config.toml"),
-                                w!("Settings"),
-                                MB_OK | MB_ICONINFORMATION,
-                            );
+                            MessageBoxW(None, &text, w!("Help"), MB_OK | MB_ICONINFORMATION);
                         }
                     }
                 } else if event.id == quit_id {
@@ -374,6 +375,55 @@ pub async fn run_app(
 
     tracing::info!("Application exiting");
     Ok(())
+}
+
+/// Build the Help dialog text from the actual loaded hotkey config, so it
+/// describes what's really configured instead of hardcoded example keys
+/// that can silently drift out of sync with config.toml.
+fn build_help_text(hotkey: &HotkeyConfig) -> String {
+    let recording_line = match hotkey.mode.as_str() {
+        "combo" => format!("- Press {} to start/stop voice input.", hotkey.combo_key),
+        "single_tap" => format!("- Press {} to start/stop voice input.", hotkey.double_tap_key),
+        _ => format!(
+            "- Double-tap {} (within {}ms) to start/stop voice input.",
+            hotkey.double_tap_key, hotkey.double_tap_interval
+        ),
+    };
+
+    let pause_combo_line = if matches!(hotkey.mode.as_str(), "single_tap" | "double_tap")
+        && !hotkey.pause_combo_key.trim().is_empty()
+    {
+        Some(format!(
+            "- Hold {} and press {} to pause/resume the whole service (hotkey + floating button turn off/on).",
+            hotkey.double_tap_key, hotkey.pause_combo_key
+        ))
+    } else {
+        None
+    };
+
+    let mut lines = vec![
+        "Doubao Voice Input".to_string(),
+        String::new(),
+        "Hotkey:".to_string(),
+        recording_line,
+    ];
+    if let Some(line) = pause_combo_line {
+        lines.push(line);
+    }
+    lines.push(String::new());
+    lines.push("Floating button:".to_string());
+    lines.push("- Left-click to start/stop voice input.".to_string());
+    lines.push("- Right-click to exit (with confirmation).".to_string());
+    lines.push(String::new());
+    lines.push("Tray icon:".to_string());
+    lines.push(
+        "- Left-click, or the \"Service: Pause/Resume\" menu item, to pause/resume the whole service."
+            .to_string(),
+    );
+    lines.push(String::new());
+    lines.push("Config file: config.toml".to_string());
+
+    lines.join("\n")
 }
 
 /// Pause/resume the whole service: stops any active recording, disables the
