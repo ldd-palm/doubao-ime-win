@@ -81,6 +81,9 @@ image = "0.24"
 [build-dependencies]
 prost-build = "0.12"
 
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
 [profile.release]
 opt-level = "z"
 lto = true

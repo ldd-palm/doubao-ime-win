@@ -98,21 +98,23 @@ connect_timeout_secs = 8
 
 ### 大模型纠错（可选）
 
-豆包 ASR 的同音字/错别字有时需要人工修正。`[llm]` 配置段可以接入豆包大模型
-（火山方舟 Chat Completions 接口）对**最终识别结果**做一次纠错，只在确认结果
-（非实时候选字）上生效，避免中间结果被打断刷新。
+豆包 ASR 的同音字/错别字有时需要人工修正。`[llm]` 配置段可以接入**任意
+OpenAI 兼容的 Chat Completions API**（DeepSeek、火山方舟/豆包大模型等）对
+**最终识别结果**做一次纠错，只在确认结果（非实时候选字）上生效，避免中间
+结果被打断刷新。
 
 ```toml
 [llm]
 enabled = false            # 默认关闭，不影响原有行为
-endpoint_id = ""           # 火山方舟推理接入点 ID，形如 ep-20240101000000-xxxxx
-api_key = ""                # 留空则读环境变量 ARK_API_KEY（推荐，不在文件里存明文 key）
-base_url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+model = ""                 # 模型名，如 "deepseek-flash"，或火山方舟 ep-xxxxx 接入点 ID
+api_key = ""                # 留空则读环境变量 LLM_API_KEY（推荐，不在文件里存明文 key）
+base_url = "https://api.deepseek.com/chat/completions"  # 换成火山方舟等其他兼容接口也行
 timeout_secs = 5            # 超时或调用失败直接用原始识别结果，不阻塞输入
 ```
 
-开通步骤：[火山方舟控制台](https://console.volcengine.com/ark) → 开通豆包模型 →
-创建推理接入点拿到 `ep-` 开头的 endpoint_id → 生成 API Key。
+当前实际用的是 **DeepSeek**（`deepseek-flash`）。换成火山方舟豆包大模型只需把
+`base_url` 改成 `https://ark.cn-beijing.volces.com/api/v3/chat/completions`，
+`model` 改成方舟控制台创建的 `ep-xxxxx` 接入点 ID，key 照样走 `LLM_API_KEY`。
 
 纠错会给每句确认结果多引入一次网络往返（通常几百毫秒），属于用实时性换准确性；
 调用失败/超时会静默回退到原始识别文本，不会卡住或丢字。

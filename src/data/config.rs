@@ -216,22 +216,23 @@ impl Default for AsrConfig {
 }
 
 /// LLM-based correction of the ASR final transcript (homophones, typos,
-/// punctuation) before it's inserted, using a Doubao model via the Volcano
-/// Ark chat completions API.
+/// punctuation) before it's inserted. Works with any OpenAI-compatible chat
+/// completions API (Volcano Ark / Doubao, DeepSeek, etc.) — just point
+/// `base_url` and `model` at the provider you want.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmConfig {
     #[serde(default)]
     pub enabled: bool,
-    /// Volcano Ark inference endpoint id (e.g. "ep-20240101000000-xxxxx"),
-    /// created in the Ark console for a Doubao model.
+    /// Model name / inference endpoint id sent as the `model` field, e.g.
+    /// "deepseek-flash" or a Volcano Ark endpoint id ("ep-...-xxxxx").
     #[serde(default)]
-    pub endpoint_id: String,
-    /// API key. Leave empty to read the `ARK_API_KEY` environment variable
+    pub model: String,
+    /// API key. Leave empty to read the `LLM_API_KEY` environment variable
     /// instead (preferred, so the key isn't stored in plaintext next to the
     /// binary). The env var takes priority when both are set.
     #[serde(default)]
     pub api_key: String,
-    #[serde(default = "default_ark_base_url")]
+    #[serde(default = "default_llm_base_url")]
     pub base_url: String,
     /// Timeout for the correction request, in seconds. On timeout or any
     /// other failure, the original ASR text is used unmodified.
@@ -239,8 +240,8 @@ pub struct LlmConfig {
     pub timeout_secs: u64,
 }
 
-fn default_ark_base_url() -> String {
-    "https://ark.cn-beijing.volces.com/api/v3/chat/completions".to_string()
+fn default_llm_base_url() -> String {
+    "https://api.deepseek.com/chat/completions".to_string()
 }
 
 fn default_llm_timeout_secs() -> u64 {
@@ -251,9 +252,9 @@ impl Default for LlmConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            endpoint_id: String::new(),
+            model: String::new(),
             api_key: String::new(),
-            base_url: default_ark_base_url(),
+            base_url: default_llm_base_url(),
             timeout_secs: default_llm_timeout_secs(),
         }
     }

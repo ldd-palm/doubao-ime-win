@@ -1,8 +1,9 @@
 //! LLM-based ASR text correction
 //!
-//! Sends the final ASR transcript to a Doubao model via the Volcano Ark
-//! chat completions API (OpenAI-compatible) to fix homophones, typos, and
-//! punctuation before the text is inserted.
+//! Sends the final ASR transcript to an OpenAI-compatible chat completions
+//! API (Volcano Ark / Doubao, DeepSeek, etc. — whatever `[llm]` in
+//! config.toml points at) to fix homophones, typos, and punctuation before
+//! the text is inserted.
 
 use anyhow::{anyhow, Result};
 use reqwest::Client;
@@ -13,10 +14,10 @@ use crate::data::LlmConfig;
 
 const SYSTEM_PROMPT: &str = "你是语音识别结果校对助手。任务：只修正输入文本中的同音字错误、错别字和标点，不要改变原意，不要增删实质内容，不要输出任何解释，只输出修正后的文本本身。如果输入本身没有问题，原样输出。";
 
-/// Corrects ASR final-result text via a Doubao (Volcano Ark) chat model.
+/// Corrects ASR final-result text via an OpenAI-compatible chat model.
 pub struct TextCorrector {
     client: Client,
-    endpoint_id: String,
+    model: String,
     api_key: String,
     base_url: String,
     timeout: Duration,
@@ -55,14 +56,14 @@ impl TextCorrector {
     /// disabled or required credentials are missing, in which case the
     /// caller should skip correction entirely rather than fail.
     ///
-    /// The API key is read from the `ARK_API_KEY` environment variable if
+    /// The API key is read from the `LLM_API_KEY` environment variable if
     /// set (preferred), falling back to `config.api_key`.
     pub fn from_config(config: &LlmConfig) -> Option<Self> {
         if !config.enabled {
             return None;
         }
 
-        let api_key = std::env::var("ARK_API_KEY")
+        let api_key = std::env::var("LLM_API_KEY")
             .ok()
             .filter(|k| !k.is_empty())
             .or_else(|| Some(config.api_key.clone()).filter(|k| !k.is_empty()));
@@ -71,24 +72,28 @@ impl TextCorrector {
             Some(k) => k,
             None => {
                 tracing::warn!(
-                    "LLM correction is enabled but no API key was found (set ARK_API_KEY or [llm].api_key in config.toml); disabling correction"
+                    "LLM correction is enabled but no API key was found (set LLM_API_KEY or [llm].api_key in config.toml); disabling correction"
                 );
                 return None;
             }
         };
 
-        if config.endpoint_id.is_empty() {
+        if config.model.is_empty() {
             tracing::warn!(
-                "LLM correction is enabled but [llm].endpoint_id is empty; disabling correction"
+                "LLM correction is enabled but [llm].model is empty; disabling correction"
             );
             return None;
         }
 
-        tracing::info!("LLM correction enabled (endpoint: {})", config.endpoint_id);
+        tracing::info!(
+            "LLM correction enabled (model: {}, base_url: {})",
+            config.model,
+            config.base_url
+        );
 
         Some(Self {
             client: Client::new(),
-            endpoint_id: config.endpoint_id.clone(),
+            model: config.model.clone(),
             api_key,
             base_url: config.base_url.clone(),
             timeout: Duration::from_secs(config.timeout_secs.max(1)),
@@ -117,7 +122,7 @@ impl TextCorrector {
 
     async fn try_correct(&self, text: &str) -> Result<String> {
         let body = ChatRequest {
-            model: &self.endpoint_id,
+            model: &self.model,
             messages: vec![
                 ChatMessage {
                     role: "system",

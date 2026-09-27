@@ -43,11 +43,14 @@ connect_timeout_secs = 8
 [llm]
 # 是否用大模型对识别结果做纠错（同音字/错别字/标点），默认关闭
 enabled = true
-# 火山方舟推理接入点 ID（在方舟控制台创建，形如 ep-20240101000000-xxxxx）
-endpoint_id = "ep-m-20260806054920-4lk6j"
-# API Key。留空则读取环境变量 ARK_API_KEY（推荐，避免明文存在这个文件里）
+# 模型名 / 推理接入点 ID，会作为请求里的 model 字段。
+# DeepSeek 直接填模型名（如 "deepseek-flash"）；火山方舟填 ep-xxxxx 形式的接入点 ID
+model = "deepseek-flash"
+# API Key。留空则读取环境变量 LLM_API_KEY（推荐，避免明文存在这个文件里）
 api_key = ""
-# 火山方舟 Chat Completions 接口地址，一般不用改
-base_url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+# OpenAI 兼容的 Chat Completions 接口地址。DeepSeek 是
+# https://api.deepseek.com/chat/completions；火山方舟是
+# https://ark.cn-beijing.volces.com/api/v3/chat/completions
+base_url = "https://api.deepseek.com/chat/completions"
 # 纠错请求超时时间（秒），超时则直接用原始识别结果，不阻塞输入
 timeout_secs = 5
