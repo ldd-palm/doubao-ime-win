@@ -1,0 +1,53 @@
+# Doubao Voice Input - Configuration File
+# 豆包语音输入配置文件
+
+[general]
+# 开机自启动
+auto_start = false
+# 语言
+language = "zh-CN"
+
+[hotkey]
+# 热键模式: "combo" (组合键) / "double_tap" (双击) / "single_tap" (单击)
+mode = "combo"
+# 组合键 (当 mode = "combo" 时生效)
+combo_key = "Ctrl+Shift+V"
+# 触发键 (当 mode = "double_tap" 或 "single_tap" 时生效)
+# 可选: Ctrl/LCtrl/RCtrl, Shift/LShift/RShift, Alt/LAlt/RAlt，
+# 不带 L/R 前缀表示左右键都触发
+double_tap_key = "Ctrl"
+# 双击间隔 (毫秒，仅 double_tap 模式生效)
+double_tap_interval = 300
+# 按住触发键（double_tap_key）的同时按下这个键 = 暂停/恢复整个服务（而不是
+# 切换录音）。悬浮按钮隐藏=已暂停，重新出现=已恢复。留空 "" 表示关闭这个功能。
+# 支持: Space/Enter/Tab/Escape、F1-F12、单个字母或数字。
+pause_combo_key = "Space"
+
+[floating_button]
+# 是否显示悬浮按钮
+enabled = true
+# 悬浮按钮位置 (像素)
+position_x = 100
+position_y = 100
+
+[asr]
+# 是否启用 VAD (语音活动检测)
+vad_enabled = true
+# 设备凭据的最长缓存天数。豆包 ASR token 会在服务端过期，
+# 过期后握手会卡住十几秒再报 service discovery failure，
+# 因此到期前主动重新注册。设为 0 表示不做过期检查。
+credential_ttl_days = 3
+# 建立 ASR WebSocket 连接的超时时间（秒）
+connect_timeout_secs = 8
+
+[llm]
+# 是否用大模型对识别结果做纠错（同音字/错别字/标点），默认关闭
+enabled = false
+# 火山方舟推理接入点 ID（在方舟控制台创建，形如 ep-20240101000000-xxxxx）
+endpoint_id = ""
+# API Key。留空则读取环境变量 ARK_API_KEY（推荐，避免明文存在这个文件里）
+api_key = ""
+# 火山方舟 Chat Completions 接口地址，一般不用改
+base_url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+# 纠错请求超时时间（秒），超时则直接用原始识别结果，不阻塞输入
+timeout_secs = 5
