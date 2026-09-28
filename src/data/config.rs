@@ -7,6 +7,11 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+/// Commented template written out for a brand-new `config.toml` on first
+/// run. Kept as the single source of truth for what a fresh install looks
+/// like — edit `config.toml.example`, not this constant.
+const DEFAULT_CONFIG_TEMPLATE: &str = include_str!("../../config.toml.example");
+
 /// Application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -53,7 +58,14 @@ impl AppConfig {
         exe_dir.join("credentials.json")
     }
 
-    /// Load configuration from file or create default
+    /// Load configuration from file, or create the default one on first run.
+    ///
+    /// The first-run file is written from the commented template
+    /// (`config.toml.example`, embedded at compile time) rather than
+    /// serializing `AppConfig::default()` — `toml::to_string_pretty` has no
+    /// way to carry Rust doc comments into the output, so a struct-serialized
+    /// file would ship with none of the explanations or the reminder to fill
+    /// in an `[llm]` API key.
     pub fn load_or_default() -> Result<Self> {
         let path = Self::config_path();
 
@@ -62,8 +74,8 @@ impl AppConfig {
             let config: AppConfig = toml::from_str(&content)?;
             Ok(config)
         } else {
-            let config = AppConfig::default();
-            config.save()?;
+            fs::write(&path, DEFAULT_CONFIG_TEMPLATE)?;
+            let config: AppConfig = toml::from_str(DEFAULT_CONFIG_TEMPLATE)?;
             Ok(config)
         }
     }

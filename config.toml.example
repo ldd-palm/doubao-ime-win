@@ -41,12 +41,22 @@ credential_ttl_days = 3
 connect_timeout_secs = 8
 
 [llm]
-# 是否用大模型对识别结果做纠错（同音字/错别字/标点），默认关闭
+# ============================================================
+# 大模型纠错（可选）：用大模型修正识别结果里的同音字/错别字/标点。
+# 默认关闭，不影响语音识别本身。想用的话三步：
+#   1. 去 DeepSeek（https://platform.deepseek.com）或火山方舟等平台申请 API Key
+#   2. 把 model / base_url / api_key 三项填好（或者 api_key 留空，改用下面
+#      说的 LLM_API_KEY 环境变量——更安全，不怕这个文件被转发出去）
+#   3. enabled 改成 true
+# ============================================================
 enabled = false
-# 模型名 / 推理接入点 ID，会作为请求里的 model 字段。
-# DeepSeek 直接填模型名（如 "deepseek-flash"）；火山方舟填 ep-xxxxx 形式的接入点 ID
+# 模型名 / 推理接入点 ID，会作为请求里的 model 字段，例如 DeepSeek 的
+# "deepseek-flash"；火山方舟填 ep-xxxxx 形式的接入点 ID。
+# ⚠️ 必填——enabled=true 但这里留空，纠错功能会自动跳过并在日志里报警告。
 model = ""
-# API Key。留空则读取环境变量 LLM_API_KEY（推荐，避免明文存在这个文件里）
+# ⚠️ 你的 API Key，请自行申请并填在这里——默认不带任何 key。
+# 也可以留空 ""，改成设置环境变量 LLM_API_KEY（推荐：不怕这份配置文件被转发
+# 或提交到别处时明文泄露）。两者都填了的话，环境变量优先。
 api_key = ""
 # OpenAI 兼容的 Chat Completions 接口地址。DeepSeek 是
 # https://api.deepseek.com/chat/completions；火山方舟是
