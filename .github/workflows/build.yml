@@ -54,17 +54,18 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: doubao-voice-input-windows
-        path: |
-          target/release/doubao-voice-input.exe
-          config.toml
+        # Only the exe. config.toml is intentionally excluded: it's
+        # generated on first run from the built-in template (blank
+        # api_key/model, see config.toml.example), and shipping a
+        # pre-filled one would leak whoever built the release's personal
+        # settings instead of giving every user a clean default.
+        path: target/release/doubao-voice-input.exe
         retention-days: 30
-    
+
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
-        files: |
-          target/release/doubao-voice-input.exe
-          config.toml
+        files: target/release/doubao-voice-input.exe
         draft: false
         prerelease: false
