@@ -18,6 +18,9 @@ use crate::ui::{
     FloatingButtonStateSetter,
 };
 
+/// Shown as a clickable link in the Help dialog.
+const PROJECT_URL: &str = "https://github.com/ldd-palm/doubao-ime-win";
+
 /// Run the application with system tray and floating button
 pub async fn run_app(
     config: AppConfig,
@@ -247,14 +250,7 @@ pub async fn run_app(
                 } else if event.id == help_id {
                     tracing::info!("Help from menu");
                     #[cfg(target_os = "windows")]
-                    {
-                        use windows::core::{w, HSTRING};
-                        use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_OK, MB_ICONINFORMATION};
-                        let text = HSTRING::from(help_text.as_str());
-                        unsafe {
-                            MessageBoxW(None, &text, w!("Help"), MB_OK | MB_ICONINFORMATION);
-                        }
-                    }
+                    show_help_dialog(&help_text);
                 } else if event.id == quit_id {
                     tracing::info!("Quit from menu");
                     running_clone.store(false, Ordering::SeqCst);
@@ -375,6 +371,64 @@ pub async fn run_app(
 
     tracing::info!("Application exiting");
     Ok(())
+}
+
+/// Show the Help dialog as a TaskDialog rather than a plain MessageBox, so
+/// the project URL can be a real clickable link instead of just printed
+/// text. Requires the Common Controls v6 manifest embedded in build.rs —
+/// without it `TaskDialogIndirect` isn't exported by the loaded comctl32.dll
+/// and the whole process would fail to start, not just this one dialog.
+#[cfg(target_os = "windows")]
+fn show_help_dialog(help_text: &str) {
+    use windows::core::{w, HRESULT, HSTRING, PCWSTR};
+    use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+    use windows::Win32::UI::Controls::{
+        TaskDialogIndirect, TASKDIALOGCONFIG, TASKDIALOG_FLAGS, TDCBF_OK_BUTTON,
+        TDF_ALLOW_DIALOG_CANCELLATION, TDF_ENABLE_HYPERLINKS, TDF_SIZE_TO_CONTENT,
+        TDN_HYPERLINK_CLICKED, TD_INFORMATION_ICON,
+    };
+    use windows::Win32::UI::Shell::ShellExecuteW;
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    // Opens whatever link was clicked (its href arrives in `lparam` as a
+    // null-terminated wide string) in the default browser.
+    unsafe extern "system" fn callback(
+        _hwnd: HWND,
+        msg: u32,
+        _wparam: WPARAM,
+        lparam: LPARAM,
+        _lp_ref_data: isize,
+    ) -> HRESULT {
+        if msg == TDN_HYPERLINK_CLICKED.0 as u32 {
+            let href = PCWSTR(lparam.0 as *const u16);
+            let _ = ShellExecuteW(None, w!("open"), href, PCWSTR::null(), PCWSTR::null(), SW_SHOWNORMAL);
+        }
+        HRESULT(0)
+    }
+
+    let content = format!(
+        "{help_text}\n\nProject page:\n<a href=\"{PROJECT_URL}\">{PROJECT_URL}</a>"
+    );
+    let content_h = HSTRING::from(content);
+    let instruction_h = HSTRING::from("Doubao Voice Input");
+
+    let mut config = TASKDIALOGCONFIG {
+        cbSize: std::mem::size_of::<TASKDIALOGCONFIG>() as u32,
+        dwFlags: TASKDIALOG_FLAGS(
+            TDF_ENABLE_HYPERLINKS.0 | TDF_ALLOW_DIALOG_CANCELLATION.0 | TDF_SIZE_TO_CONTENT.0,
+        ),
+        dwCommonButtons: TDCBF_OK_BUTTON,
+        pszWindowTitle: w!("Help"),
+        pszMainInstruction: PCWSTR(instruction_h.as_ptr()),
+        pszContent: PCWSTR(content_h.as_ptr()),
+        pfCallback: Some(callback),
+        ..Default::default()
+    };
+    config.Anonymous1.pszMainIcon = TD_INFORMATION_ICON;
+
+    unsafe {
+        let _ = TaskDialogIndirect(&config, None, None, None);
+    }
 }
 
 /// Build the Help dialog text from the actual loaded hotkey config, so it

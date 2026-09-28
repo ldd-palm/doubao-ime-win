@@ -20,6 +20,10 @@
 credentials.json
 env.txt
 
+# Internal dev/handoff notes - kept locally, not pushed
+HANDOFF.md
+CHANGES.md
+
 # OS files
 .DS_Store
 Thumbs.db
